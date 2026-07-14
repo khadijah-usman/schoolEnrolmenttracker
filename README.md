@@ -1,1 +1,1 @@
-# schoolEnrolmenttracker
+# SchoolEnrolmentTracker
