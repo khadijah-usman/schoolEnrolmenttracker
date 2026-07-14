@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="page-hd">
+  <div class="page-hd-left">
+    <h1>Dashboard</h1>
+    <p class="page-sub">Overview of your admission pipeline</p>
+  </div>
+  <a href="{{ url_for('add_admission') }}" class="btn btn-primary">
+    <i class="bi bi-person-plus-fill"></i> New Enquiry
+  </a>
+</div>
+
+<!-- ── Stat Cards ─────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="stat-card sc-indigo">
+      <div class="stat-icon-wrap"><i class="bi bi-clipboard-data"></i></div>
+      <div>
+        <div class="stat-value">{{ total }}</div>
+        <div class="stat-label">Total Enquiries</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="stat-card sc-amber">
+      <div class="stat-icon-wrap"><i class="bi bi-hourglass-split"></i></div>
+      <div>
+        <div class="stat-value">{{ in_progress }}</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="stat-card sc-green">
+      <div class="stat-icon-wrap"><i class="bi bi-mortarboard-fill"></i></div>
+      <div>
+        <div class="stat-value">{{ enrolled }}</div>
+        <div class="stat-label">Enrolled</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="stat-card sc-red">
+      <div class="stat-icon-wrap"><i class="bi bi-x-circle"></i></div>
+      <div>
+        <div class="stat-value">{{ rejected }}</div>
+        <div class="stat-label">Rejected</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="stat-card sc-slate">
+      <div class="stat-icon-wrap"><i class="bi bi-dash-circle"></i></div>
+      <div>
+        <div class="stat-value">{{ withdrawn }}</div>
+        <div class="stat-label">Withdrawn</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="stat-card sc-violet">
+      <div class="stat-icon-wrap"><i class="bi bi-graph-up-arrow"></i></div>
+      <div>
+        <div class="stat-value">{{ conversion }}%</div>
+        <div class="stat-label">Conversion</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Bottom row ────────────────────────────────────── -->
+<div class="row g-4">
+
+  <!-- Pipeline -->
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-bar-chart-steps" style="color:var(--accent);"></i>
+        Admission Pipeline
+      </div>
+      <div class="card-body py-2 px-4">
+
+        <div class="pipeline-list">
+          {% for stage in active_stages %}
+          {% set count = stage_counts[stage] %}
+          {% set pct   = (count / max_count * 100)|int if max_count else 0 %}
+          <a href="{{ url_for('admissions', stage=stage) }}" class="pipeline-item">
+            <span class="pl-num">{{ loop.index }}</span>
+            <span class="pl-name">{{ stage }}</span>
+            <div class="pl-bar-wrap">
+              <div class="pl-bar" style="width:{{ pct }}%;"></div>
+            </div>
+            <span class="pl-count">{{ count }}</span>
+          </a>
+          {% endfor %}
+        </div>
+
+        {% if stage_counts['Rejected'] or stage_counts['Withdrawn'] %}
+        <div class="d-flex gap-2 pt-3 mt-2" style="border-top:1px solid var(--border);">
+          <a href="{{ url_for('admissions', stage='Rejected') }}"
+             class="stage-badge text-decoration-none"
+             style="background:#fee2e2;color:#7f1d1d;">
+            Rejected &nbsp;{{ stage_counts['Rejected'] }}
+          </a>
+          <a href="{{ url_for('admissions', stage='Withdrawn') }}"
+             class="stage-badge text-decoration-none"
+             style="background:#f1f5f9;color:#475569;">
+            Withdrawn &nbsp;{{ stage_counts['Withdrawn'] }}
+          </a>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent -->
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header" style="justify-content:space-between;">
+        <span><i class="bi bi-clock-history" style="color:var(--accent);"></i> Recent Enquiries</span>
+        <a href="{{ url_for('admissions') }}" class="btn btn-sm btn-outline-secondary">
+          View all <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+      <div class="card-body p-0">
+        {% if recent %}
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Student</th>
+              <th>Class</th>
+              <th>Stage</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in recent %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="av av-md av-{{ s.id % 8 }}">{{ s.child_name[:2]|upper }}</div>
+                  <div>
+                    <div style="font-weight:600;font-size:.82rem;">{{ s.child_name }}</div>
+                    <div style="font-size:.71rem;color:var(--text-4);">{{ s.parent_name }}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="font-size:.78rem;color:var(--text-3);">{{ s.class_applying }}</td>
+              <td>
+                <span class="stage-badge"
+                      style="background:{{ stage_soft[s.stage][0] }};color:{{ stage_soft[s.stage][1] }};">
+                  {{ s.stage }}
+                </span>
+              </td>
+              <td>
+                <a href="{{ url_for('student_detail', student_id=s.id) }}" class="icon-btn">
+                  <i class="bi bi-arrow-right"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+          <i class="bi bi-people ei"></i>
+          <p style="font-weight:600;">No enquiries yet</p>
+          <p><a href="{{ url_for('add_admission') }}" style="color:var(--accent);">Add the first student</a></p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Class Capacity ─────────────────────────────────── -->
+<div class="row g-4 mt-0">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header" style="justify-content:space-between;">
+        <span>
+          <i class="bi bi-building-fill" style="color:var(--accent);"></i>
+          Class Capacity
+        </span>
+        <span style="font-size:.72rem;color:var(--text-4);font-weight:500;">
+          Max {{ class_max }} per class
+        </span>
+      </div>
+      <div class="card-body">
+
+        <div class="row g-3 justify-content-center">
+          {% for cls in class_capacity %}
+
+          {% if cls.pct >= 100 %}
+            {% set ring_col = '#ef4444' %}
+            {% set txt_col  = '#b91c1c' %}
+            {% set lbl_col  = '#fee2e2' %}
+          {% elif cls.pct >= 80 %}
+            {% set ring_col = '#f97316' %}
+            {% set txt_col  = '#c2410c' %}
+            {% set lbl_col  = '#fff7ed' %}
+          {% elif cls.pct >= 50 %}
+            {% set ring_col = '#f59e0b' %}
+            {% set txt_col  = '#92400e' %}
+            {% set lbl_col  = '#fffbeb' %}
+          {% else %}
+            {% set ring_col = '#4f46e5' %}
+            {% set txt_col  = '#3730a3' %}
+            {% set lbl_col  = '#eef2ff' %}
+          {% endif %}
+
+          {% set circ = 226.19 %}
+          {% set offset = circ * (1 - cls.pct / 100) %}
+
+          <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+            <div style="background:#fff;border:1px solid var(--border);border-radius:16px;
+                        padding:18px 12px 14px;text-align:center;
+                        box-shadow:0 1px 4px rgba(0,0,0,.05);
+                        transition:box-shadow .15s;">
+
+              <!-- Circular ring -->
+              <div style="position:relative;width:88px;height:88px;margin:0 auto 10px;">
+                <svg width="88" height="88" viewBox="0 0 88 88" style="transform:rotate(-90deg);">
+                  <circle cx="44" cy="44" r="36"
+                          fill="none" stroke="#f0f2f8" stroke-width="8"/>
+                  <circle cx="44" cy="44" r="36"
+                          fill="none" stroke="{{ ring_col }}" stroke-width="8"
+                          stroke-linecap="round"
+                          stroke-dasharray="{{ circ }}"
+                          stroke-dashoffset="{{ offset }}"/>
+                  {% if cls.new > 0 %}
+                  {% set new_circ_end = circ * (cls.new / class_max) %}
+                  {% set new_offset = circ - new_circ_end %}
+                  <circle cx="44" cy="44" r="36"
+                          fill="none" stroke="#10b981" stroke-width="8"
+                          stroke-linecap="round"
+                          stroke-dasharray="{{ new_circ_end }} {{ circ - new_circ_end }}"
+                          stroke-dashoffset="{{ circ * (1 - cls.pct / 100) }}"/>
+                  {% endif %}
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;
+                            align-items:center;justify-content:center;gap:0;">
+                  <span style="font-size:1.25rem;font-weight:800;color:#111827;line-height:1;">{{ cls.count }}</span>
+                  <span style="font-size:.62rem;color:#9ca3af;font-weight:600;line-height:1.4;">/{{ class_max }}</span>
+                </div>
+              </div>
+
+              <!-- Class name -->
+              <div style="font-weight:700;font-size:.82rem;color:#111827;margin-bottom:4px;">{{ cls.name }}</div>
+
+              <!-- Status label -->
+              {% set rem = class_max - cls.count %}
+              {% if rem <= 0 %}
+              <div style="display:inline-block;background:#fee2e2;color:#b91c1c;
+                          font-size:.6rem;font-weight:800;padding:2px 8px;
+                          border-radius:20px;letter-spacing:.04em;">FULL</div>
+              {% else %}
+              <div style="font-size:.68rem;color:var(--text-4);font-weight:500;">
+                {{ rem }} place{{ 's' if rem != 1 }}
+              </div>
+              {% endif %}
+
+              {% if cls.new > 0 %}
+              <div style="margin-top:5px;">
+                <span style="font-size:.6rem;background:#dcfce7;color:#166534;
+                             font-weight:700;padding:1px 7px;border-radius:20px;">
+                  +{{ cls.new }} new
+                </span>
+              </div>
+              {% endif %}
+
+            </div>
+          </div>
+
+          {% endfor %}
+        </div>
+
+        <!-- Summary totals -->
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);
+                    display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
+          <div style="font-size:.78rem;color:var(--text-3);">
+            <span style="font-weight:800;font-size:1.1rem;color:#111827;">{{ total_existing + total_new_enrolled }}</span>
+            <span style="margin-left:5px;">total students</span>
+          </div>
+          <div style="font-size:.75rem;color:#475569;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4f46e5;margin-right:5px;"></span>
+            <strong>{{ total_existing }}</strong> existing
+          </div>
+          {% if total_new_enrolled > 0 %}
+          <div style="font-size:.75rem;color:#475569;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:5px;"></span>
+            <strong>{{ total_new_enrolled }}</strong> newly enrolled
+          </div>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

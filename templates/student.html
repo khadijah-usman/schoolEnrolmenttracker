@@ -1,0 +1,524 @@
+{% extends 'base.html' %}
+{% block title %}{{ student.child_name }}{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div class="page-hd">
+  <div class="page-hd-left">
+    <div class="d-flex align-items-center gap-3">
+      <a href="{{ url_for('admissions') }}" class="icon-btn">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div class="av av-lg av-{{ student.id % 8 }}">
+        {{ student.child_name[:2]|upper }}
+      </div>
+      <div>
+        <h1>{{ student.child_name }}</h1>
+        <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+          <span class="stage-badge"
+                style="background:{{ stage_soft[student.stage][0] }};color:{{ stage_soft[student.stage][1] }};">
+            {{ student.stage }}
+          </span>
+          {% if student.academic_year %}
+          <span class="stage-badge" style="background:#f1f5f9;color:#475569;">
+            <i class="bi bi-calendar3 me-1"></i>{{ student.academic_year }}
+          </span>
+          {% endif %}
+          {% if student.gender %}
+          <span style="font-size:.72rem;color:var(--text-4);">
+            <i class="bi bi-person me-1"></i>{{ student.gender }}
+          </span>
+          {% endif %}
+          <span style="font-size:.72rem;color:var(--text-4);">
+            <i class="bi bi-calendar-event me-1"></i>Enquiry: {{ student.enquiry_date }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <a href="{{ url_for('print_student', student_id=student.id) }}" target="_blank" class="icon-btn" title="Print record" style="width:auto;padding:0 14px;gap:6px;font-size:.78rem;font-weight:600;">
+    <i class="bi bi-printer-fill"></i> Print
+  </a>
+</div>
+
+<!-- Progress stepper (active pipeline stages only) -->
+{% if student.stage in active_stages %}
+<div class="card mb-4">
+  <div class="card-body" style="padding:18px 20px 14px;">
+    <div class="stage-stepper">
+      {% for s in active_stages %}
+      {% set idx = loop.index0 %}
+      <div class="step-item {% if idx < stage_index %}done{% elif idx == stage_index %}cur{% endif %}">
+        <div class="step-line"></div>
+        <div class="step-dot">
+          {% if idx < stage_index %}<i class="bi bi-check-lg" style="font-size:.55rem;"></i>
+          {% elif idx == stage_index %}<i class="bi bi-circle-fill" style="font-size:.35rem;"></i>
+          {% endif %}
+        </div>
+        <div class="step-lbl">{{ s }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="d-flex align-items-center gap-3 mt-3">
+      <div class="progress flex-grow-1" style="height:5px;">
+        {% set pct = (stage_index / (active_stages|length - 1) * 100)|int if active_stages|length > 1 else 0 %}
+        <div class="progress-bar" style="width:{{ pct }}%;background:var(--indigo);"></div>
+      </div>
+      <span style="font-size:.72rem;color:var(--text-4);white-space:nowrap;">
+        Step {{ stage_index + 1 }} of {{ active_stages|length }}
+      </span>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Main content -->
+<div class="row g-4">
+
+  <!-- ═══════ LEFT COLUMN ═══════ -->
+  <div class="col-12 col-lg-8">
+
+    <!-- Student & parent details -->
+    <div class="card mb-4">
+      <div class="card-header" style="justify-content:space-between;">
+        <span><i class="bi bi-person-vcard-fill" style="color:#6366f1;"></i> Student & Parent Details</span>
+        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#editForm">
+          <i class="bi bi-pencil-fill"></i> Edit
+        </button>
+      </div>
+      <div class="card-body">
+
+        <p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-4);margin-bottom:12px;">Child</p>
+        <div class="info-grid mb-4">
+          <span class="info-k">Full Name</span>      <span class="info-v">{{ student.child_name }}</span>
+          <span class="info-k">Date of Birth</span>  <span class="info-v">{{ student.date_of_birth or '—' }}</span>
+          <span class="info-k">Gender</span>          <span class="info-v">{{ student.gender or '—' }}</span>
+          <span class="info-k">Class Applying</span>  <span class="info-v">{{ student.class_applying }}</span>
+          <span class="info-k">Academic Year</span>   <span class="info-v">{{ student.academic_year or '—' }}</span>
+          <span class="info-k">Previous School</span> <span class="info-v">{{ student.previous_school or '—' }}</span>
+          <span class="info-k">Home Address</span>    <span class="info-v">{{ student.address or '—' }}</span>
+        </div>
+
+        <hr class="section-divider">
+        <p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-4);margin-bottom:12px;">Primary Parent / Guardian</p>
+        <div class="info-grid mb-0">
+          <span class="info-k">Name</span>  <span class="info-v">{{ student.parent_name }}</span>
+          <span class="info-k">Phone</span>
+          <span class="info-v">
+            {% if student.parent_phone %}<a href="tel:{{ student.parent_phone }}">{{ student.parent_phone }}</a>{% else %}—{% endif %}
+          </span>
+          <span class="info-k">Email</span>
+          <span class="info-v">
+            {% if student.parent_email %}<a href="mailto:{{ student.parent_email }}">{{ student.parent_email }}</a>{% else %}—{% endif %}
+          </span>
+        </div>
+
+        {% if student.second_parent_name %}
+        <hr class="section-divider">
+        <p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-4);margin-bottom:12px;">Second Parent / Guardian</p>
+        <div class="info-grid">
+          <span class="info-k">Name</span>  <span class="info-v">{{ student.second_parent_name }}</span>
+          <span class="info-k">Phone</span>
+          <span class="info-v">
+            {% if student.second_parent_phone %}<a href="tel:{{ student.second_parent_phone }}">{{ student.second_parent_phone }}</a>{% else %}—{% endif %}
+          </span>
+        </div>
+        {% endif %}
+
+        {% if student.notes %}
+        <hr class="section-divider">
+        <p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-4);margin-bottom:8px;">General Notes</p>
+        <p style="font-size:.82rem;color:var(--text-3);margin:0;">{{ student.notes }}</p>
+        {% endif %}
+
+        <!-- Edit form (collapsed) -->
+        <div class="collapse mt-4" id="editForm">
+          <hr class="section-divider">
+          <form method="post" action="{{ url_for('edit_student', student_id=student.id) }}">
+            <p class="fsec-title"><i class="bi bi-person-fill"></i> Child</p>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Full Name *</label>
+                <input type="text" name="child_name" class="form-control" value="{{ student.child_name }}" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Date of Birth</label>
+                <input type="date" name="date_of_birth" class="form-control" value="{{ student.date_of_birth }}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Gender</label>
+                <select name="gender" class="form-select">
+                  <option value="">Select</option>
+                  <option {% if student.gender == 'Male' %}selected{% endif %}>Male</option>
+                  <option {% if student.gender == 'Female' %}selected{% endif %}>Female</option>
+                  <option {% if student.gender == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Class Applying *</label>
+                <select name="class_applying" class="form-select" required>
+                  <option value="">Select class</option>
+                  {% for cls in classes_list %}
+                  <option value="{{ cls }}" {% if student.class_applying == cls %}selected{% endif %}>{{ cls }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Academic Year</label>
+                <select name="academic_year" class="form-select">
+                  <option value="">Select</option>
+                  {% for y in ['2023/2024','2024/2025','2025/2026','2026/2027','2027/2028'] %}
+                  <option {% if student.academic_year == y %}selected{% endif %}>{{ y }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Previous School</label>
+                <input type="text" name="previous_school" class="form-control" value="{{ student.previous_school }}">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Home Address</label>
+                <input type="text" name="address" class="form-control" value="{{ student.address }}">
+              </div>
+            </div>
+
+            <p class="fsec-title"><i class="bi bi-people-fill"></i> Primary Parent / Guardian</p>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label">Name *</label>
+                <input type="text" name="parent_name" class="form-control" value="{{ student.parent_name }}" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Phone</label>
+                <input type="text" name="parent_phone" class="form-control" value="{{ student.parent_phone }}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Email</label>
+                <input type="email" name="parent_email" class="form-control" value="{{ student.parent_email }}">
+              </div>
+            </div>
+
+            <p class="fsec-title"><i class="bi bi-person-plus"></i> Second Parent / Guardian</p>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Name</label>
+                <input type="text" name="second_parent_name" class="form-control" value="{{ student.second_parent_name }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Phone</label>
+                <input type="text" name="second_parent_phone" class="form-control" value="{{ student.second_parent_phone }}">
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label">General Notes</label>
+              <textarea name="notes" class="form-control" rows="2">{{ student.notes }}</textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+              <button type="button" class="btn btn-outline-secondary"
+                      data-bs-toggle="collapse" data-bs-target="#editForm">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Stage checklist -->
+    {% if checklist_items %}
+    <div class="card mb-4">
+      <div class="card-header" style="justify-content:space-between;">
+        <span><i class="bi bi-clipboard2-check-fill" style="color:#10b981;"></i> Stage Checklist — {{ student.stage }}</span>
+        <span style="font-size:.72rem;font-weight:600;color:var(--text-4);" id="cl-summary">
+          {{ done_count }} / {{ checklist_items|length }} complete
+        </span>
+      </div>
+      <div class="card-body" style="padding-bottom:14px;">
+        <div class="progress mb-4" style="height:6px;">
+          <div class="progress-bar" id="cl-bar"
+               style="width:{{ (done_count / checklist_items|length * 100)|int if checklist_items else 0 }}%;background:var(--emerald);"
+               data-total="{{ checklist_items|length }}"></div>
+        </div>
+        <div>
+          {% for item in checklist_items %}
+          <div class="cl-row">
+            <input type="checkbox" class="cl-cb" id="ci{{ item.id }}"
+                   {% if item.completed %}checked{% endif %}
+                   data-item="{{ item.id }}" data-sid="{{ student.id }}">
+            <label for="ci{{ item.id }}" class="cl-label {% if item.completed %}done{% endif %}">
+              {{ item.item }}
+            </label>
+            {% if item.completed and item.completed_at %}
+            <span class="cl-date">
+              <i class="bi bi-check-circle-fill"></i>
+              {{ item.completed_at.strftime('%d %b') }}
+            </span>
+            {% endif %}
+          </div>
+          {% if item.item == 'Assessment details issued' %}
+          <div style="margin-left:32px;margin-top:3px;margin-bottom:6px;">
+            {% set ad = assessment %}
+            <div style="display:flex;flex-wrap:wrap;gap:6px 18px;">
+              <span style="font-size:.72rem;color:var(--text-4);">
+                <i class="bi bi-calendar3 me-1"></i>
+                <strong>Date:</strong>
+                {% if ad and ad.assessment_date %}{{ ad.assessment_date }}{% else %}<em>not set</em>{% endif %}
+              </span>
+              <span style="font-size:.72rem;color:var(--text-4);">
+                <i class="bi bi-clock me-1"></i>
+                <strong>Time:</strong>
+                {% if ad and ad.assessment_time %}{{ ad.assessment_time }}{% else %}<em>not set</em>{% endif %}
+              </span>
+              <span style="font-size:.72rem;color:var(--text-4);">
+                <i class="bi bi-hash me-1"></i>
+                <strong>No.:</strong>
+                {% if ad and ad.assessment_number %}{{ ad.assessment_number }}{% else %}<em>not set</em>{% endif %}
+              </span>
+              <span style="font-size:.72rem;color:var(--text-4);">
+                <i class="bi bi-book me-1"></i>
+                <strong>Subjects:</strong>
+                {{ assessment_subjects | join(', ') }}
+              </span>
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+        <p style="font-size:.72rem;color:var(--text-4);margin-top:12px;margin-bottom:0;">
+          <i class="bi bi-info-circle me-1"></i>Tick items as you complete them — changes save instantly.
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Assessment details (shown only on Assessment Invitation stage) -->
+    {% if student.stage == 'Assessment/Interview Invitation' %}
+    <div class="card mb-4">
+      <div class="card-header">
+        <i class="bi bi-clipboard2-pulse-fill" style="color:#f59e0b;"></i> Assessment Details
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('save_assessment', student_id=student.id) }}">
+
+          <!-- Info row -->
+          <p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-4);margin-bottom:10px;">Assessment Info</p>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label">Date</label>
+              <input type="date" name="assessment_date" class="form-control"
+                     value="{{ assessment.assessment_date if assessment and assessment.assessment_date else '' }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Time</label>
+              <input type="time" name="assessment_time" class="form-control"
+                     value="{{ assessment.assessment_time if assessment and assessment.assessment_time else '' }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Assessment Number</label>
+              <input type="text" name="assessment_number" class="form-control" placeholder="e.g. ASS-001"
+                     value="{{ assessment.assessment_number if assessment and assessment.assessment_number else '' }}">
+            </div>
+          </div>
+
+          <!-- Subject results -->
+          <p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-4);margin-bottom:10px;">Subject Results</p>
+          <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <table class="table table-sm mb-0" style="font-size:.82rem;">
+              <thead>
+                <tr style="background:#f8fafc;">
+                  <th style="padding:9px 14px;font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;border-bottom:1px solid var(--border);">Subject</th>
+                  <th style="padding:9px 14px;font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;border-bottom:1px solid var(--border);width:120px;">Score (%)</th>
+                  <th style="padding:9px 14px;font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;border-bottom:1px solid var(--border);">Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for subject in assessment_subjects %}
+                {% set key = subject.lower().replace(' ', '_') %}
+                {% set rec = assessment_scores.get(subject) %}
+                <tr>
+                  <td style="padding:10px 14px;vertical-align:middle;font-weight:600;">{{ subject }}</td>
+                  <td style="padding:8px 14px;vertical-align:middle;">
+                    <input type="number" name="score_{{ key }}" class="form-control form-control-sm"
+                           placeholder="0–100" min="0" max="100" step="0.1"
+                           value="{{ rec.score if rec and rec.score else '' }}"
+                           style="max-width:90px;">
+                  </td>
+                  <td style="padding:8px 14px;vertical-align:middle;">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="result_{{ key }}"
+                               id="pass_{{ key }}" value="pass"
+                               {% if rec and rec.passed == true %}checked{% endif %}
+                               style="accent-color:#16a34a;">
+                        <label class="form-check-label" for="pass_{{ key }}"
+                               style="font-size:.78rem;font-weight:600;color:#16a34a;">Pass</label>
+                      </div>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="result_{{ key }}"
+                               id="fail_{{ key }}" value="fail"
+                               {% if rec and rec.passed == false %}checked{% endif %}
+                               style="accent-color:#dc2626;">
+                        <label class="form-check-label" for="fail_{{ key }}"
+                               style="font-size:.78rem;font-weight:600;color:#dc2626;">Fail</label>
+                      </div>
+                      {% if rec and rec.passed is not none %}
+                      <span style="font-size:.72rem;padding:2px 8px;border-radius:20px;font-weight:700;
+                        {% if rec.passed %}background:#dcfce7;color:#166534;{% else %}background:#fee2e2;color:#7f1d1d;{% endif %}">
+                        {% if rec.passed %}PASS{% else %}FAIL{% endif %}
+                      </span>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-3">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-floppy-fill"></i> Save Assessment Details
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Activity log -->
+    <div class="card" id="activity-log">
+      <div class="card-header">
+        <i class="bi bi-journal-text" style="color:#6366f1;"></i> Activity Log
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('add_note', student_id=student.id) }}" class="mb-4">
+          <div class="d-flex gap-2">
+            <input type="text" name="note" class="form-control"
+                   placeholder="Add a note, update, or observation…" required>
+            <button type="submit" class="btn btn-primary" style="flex-shrink:0;gap:0;">
+              <i class="bi bi-send-fill"></i>
+            </button>
+          </div>
+        </form>
+
+        {% if activity_notes %}
+        <div class="act-feed">
+          {% for n in activity_notes %}
+          <div class="act-item">
+            <div class="act-icon"><i class="bi bi-chat-square-text-fill"></i></div>
+            <div>
+              <div class="act-text">{{ n.note }}</div>
+              <div class="act-time"><i class="bi bi-clock me-1"></i>{{ n.created_at.strftime('%d %b %Y at %H:%M') }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="font-size:.82rem;color:var(--text-4);margin:0;">No notes yet. Add the first one above.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div><!-- /col left -->
+
+  <!-- ═══════ RIGHT COLUMN ═══════ -->
+  <div class="col-12 col-lg-4">
+
+    <!-- Move to Stage -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <i class="bi bi-arrow-right-circle-fill" style="color:#6366f1;"></i> Move to Stage
+      </div>
+      <div class="card-body p-2" style="max-height:400px;overflow-y:auto;">
+        <form method="post" action="{{ url_for('update_stage', student_id=student.id) }}">
+          {% for stage in stages %}
+          <button type="submit" name="stage" value="{{ stage }}"
+                  class="stage-opt {% if student.stage == stage %}is-active{% endif %}">
+            <div class="stage-opt-dot" style="background:{{ stage_hex[stage] }};"></div>
+            {{ stage }}
+            {% if student.stage == stage %}
+            <i class="bi bi-check-circle-fill ms-auto" style="color:var(--indigo);font-size:.8rem;"></i>
+            {% endif %}
+          </button>
+          {% endfor %}
+        </form>
+      </div>
+    </div>
+
+    <!-- Stage history -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <i class="bi bi-clock-history" style="color:#6366f1;"></i> Stage History
+      </div>
+      <div class="card-body" style="padding-top:14px;padding-bottom:14px;">
+        {% if stage_histories %}
+        <div class="tl">
+          {% for h in stage_histories %}
+          <div class="tl-item">
+            <div class="tl-dot" style="background:{{ stage_hex.get(h.stage, '#64748b') }};"></div>
+            <div class="tl-stage">{{ h.stage }}</div>
+            <div class="tl-time"><i class="bi bi-clock me-1"></i>{{ h.changed_at.strftime('%d %b %Y, %H:%M') }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="font-size:.8rem;color:var(--text-4);margin:0;">No history yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="card" style="border:1px solid #fecaca;background:#fff;">
+      <div class="card-header" style="color:var(--red);border-bottom:1px solid #fecaca;">
+        <i class="bi bi-exclamation-triangle-fill"></i> Danger Zone
+      </div>
+      <div class="card-body">
+        <p style="font-size:.8rem;color:var(--text-4);margin-bottom:14px;">
+          Permanently removes this student record. This action cannot be undone.
+        </p>
+        <form method="post" action="{{ url_for('delete_student', student_id=student.id) }}"
+              onsubmit="return confirm('Delete {{ student.child_name }}? This cannot be undone.')">
+          <button type="submit" class="btn btn-outline-danger w-100">
+            <i class="bi bi-trash3-fill"></i> Delete Record
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div><!-- /col right -->
+</div><!-- /row -->
+
+<script>
+document.querySelectorAll('.cl-cb').forEach(function(cb) {
+  cb.addEventListener('change', function() {
+    var itemId = this.dataset.item;
+    var sid = this.dataset.sid;
+    var label = this.closest('.cl-row').querySelector('.cl-label');
+    var _this = this;
+
+    fetch('/admissions/' + sid + '/checklist/' + itemId + '/toggle', {
+      method: 'POST',
+      headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.completed) {
+        label.classList.add('done');
+      } else {
+        label.classList.remove('done');
+      }
+      var total = parseInt(document.getElementById('cl-bar').dataset.total);
+      var done = document.querySelectorAll('.cl-cb:checked').length;
+      var pct = total > 0 ? Math.round(done / total * 100) : 0;
+      document.getElementById('cl-bar').style.width = pct + '%';
+      document.getElementById('cl-summary').textContent = done + ' / ' + total + ' complete';
+    })
+    .catch(function() { _this.checked = !_this.checked; });
+  });
+});
+</script>
+
+{% endblock %}

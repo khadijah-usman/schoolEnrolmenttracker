@@ -1,0 +1,341 @@
+{% extends 'uniform_base.html' %}
+{% block title %}Class Lists{% endblock %}
+
+{% block content %}
+
+<div class="page-hd">
+  <div class="page-hd-left">
+    <h1>Class Uniform Lists</h1>
+    <p class="page-sub">Select a class to view and update uniform collection</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+      <i class="bi bi-person-plus-fill"></i> Add Student
+    </button>
+    {% if pending_count %}
+    <a href="{{ url_for('uniform_pending') }}" class="btn btn-outline-primary">
+      <i class="bi bi-person-fill-add"></i> {{ pending_count }} Pending
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if classes %}
+
+<!-- ── Class tab strip ───────────────────────────────── -->
+<div class="class-tab-strip">
+  {% for class_name, students in classes.items() %}
+  {% set tab_id = 'tab-' ~ loop.index %}
+  {% set has_new = students | selectattr('is_new') | list | length > 0 %}
+  {% set s_done = namespace(n=0) %}
+  {% set s_tot  = namespace(n=0) %}
+  {% set cls_items = items_by_class[class_name] %}
+  {% for s in students %}{% set imap = {} %}{% for it in s.items %}{% if imap.update({it.name: it}) %}{% endif %}{% endfor %}{% for iname in cls_items %}{% set it = imap.get(iname) %}{% if it %}{% set s_tot.n = s_tot.n + 1 %}{% if it.collected %}{% set s_done.n = s_done.n + 1 %}{% endif %}{% endif %}{% endfor %}{% endfor %}
+  {% set all_complete = s_tot.n > 0 and s_done.n == s_tot.n %}
+
+  <button class="class-tab {% if loop.first %}active{% endif %}"
+          onclick="showClass('{{ tab_id }}')"
+          id="btn-{{ tab_id }}">
+    {{ class_name }}
+    <span class="ctab-count">{{ students|length }}</span>
+    {% if has_new %}<span class="ctab-new-dot" title="Has new students"></span>{% endif %}
+    {% if all_complete %}<i class="bi bi-check-circle-fill ctab-done"></i>{% endif %}
+  </button>
+  {% endfor %}
+</div>
+
+<!-- ── Class panes ───────────────────────────────────── -->
+{% for class_name, students in classes.items() %}
+{% set tab_id = 'tab-' ~ loop.index %}
+{% set new_students = students | selectattr('is_new') | list %}
+{% set done_all = namespace(n=0) %}
+{% set tot_all  = namespace(n=0) %}
+{% set cls_items = items_by_class[class_name] %}
+{% for s in students %}{% set imap = {} %}{% for it in s.items %}{% if imap.update({it.name: it}) %}{% endif %}{% endfor %}{% for iname in cls_items %}{% set it = imap.get(iname) %}{% if it %}{% set tot_all.n = tot_all.n + 1 %}{% if it.collected %}{% set done_all.n = done_all.n + 1 %}{% endif %}{% endif %}{% endfor %}{% endfor %}
+{% set pct = (done_all.n / tot_all.n * 100)|int if tot_all.n > 0 else 0 %}
+
+<div class="class-pane {% if not loop.first %}d-none{% endif %}" id="{{ tab_id }}">
+
+  <!-- Pane header -->
+  <div class="pane-hd">
+    <div>
+      <div class="pane-title">{{ class_name }}</div>
+      <div class="pane-meta">
+        {{ students|length }} student{{ 's' if students|length != 1 }}
+        {% if new_students %}&nbsp;·&nbsp;<span style="color:#d97706;font-weight:700;">{{ new_students|length }} new</span>{% endif %}
+        &nbsp;·&nbsp;{{ done_all.n }}/{{ tot_all.n }} items collected
+      </div>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <div style="text-align:right;">
+        <div style="font-size:.72rem;font-weight:700;color:var(--accent);margin-bottom:4px;">{{ pct }}% complete</div>
+        <div style="background:#e4e7ed;border-radius:6px;height:6px;width:110px;">
+          <div style="width:{{ pct }}%;height:100%;background:var(--accent);border-radius:6px;"></div>
+        </div>
+      </div>
+      <!-- Delete class -->
+      <form method="post" action="{{ url_for('uniform_delete_class') }}"
+            onsubmit="return confirm('Delete all {{ students|length }} students from {{ class_name }}? This cannot be undone.')">
+        <input type="hidden" name="class_name" value="{{ class_name }}">
+        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete class">
+          <i class="bi bi-trash3"></i> Delete class
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card p-0 mb-4">
+    <div class="table-scroll">
+      <table class="table table-sm uniform-table mb-0">
+        <thead>
+          <tr>
+            <th class="student-col" style="padding:10px 14px;">Student</th>
+            {% for item_name in items_by_class[class_name] %}
+            <th class="item-cell" style="padding:8px 8px;font-size:.6rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">
+              {{ item_name }}
+            </th>
+            {% endfor %}
+            <th style="padding:8px 10px;text-align:center;font-size:.6rem;font-weight:700;color:#6b7280;text-transform:uppercase;">Done</th>
+            <th style="padding:8px 10px;text-align:center;font-size:.6rem;font-weight:700;color:#6b7280;text-transform:uppercase;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+          {% set class_item_names = items_by_class[class_name] %}
+          {% set item_map = {} %}
+          {% for it in s.items %}{% if item_map.update({it.name: it}) %}{% endif %}{% endfor %}
+          {% set s_col = namespace(n=0) %}
+          {% set s_tot = namespace(n=0) %}
+          {% for iname in class_item_names %}
+            {% set it = item_map.get(iname) %}
+            {% if it %}{% set s_tot.n = s_tot.n + 1 %}{% if it.collected %}{% set s_col.n = s_col.n + 1 %}{% endif %}{% endif %}
+          {% endfor %}
+          {% set all_done = (s_col.n == s_tot.n and s_tot.n > 0) %}
+          <tr id="row-{{ s.id }}" class="{% if all_done %}all-collected-row{% endif %}">
+
+            <td class="student-col" style="padding:9px 14px;vertical-align:middle;">
+              <div class="d-flex align-items-center gap-2">
+                <div class="av av-{{ s.id % 8 }}" style="width:28px;height:28px;font-size:.6rem;flex-shrink:0;">
+                  {{ s.student_name[:2]|upper }}
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:.8rem;line-height:1.2;">{{ s.student_name }}</div>
+                  {% if s.is_new %}
+                  <span class="new-badge"><i class="bi bi-star-fill"></i>New</span>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+
+            {% for iname in class_item_names %}
+            {% set it = item_map.get(iname) %}
+            {% if it %}
+            <td class="item-cell {% if it.collected %}collected{% endif %}" id="cell-{{ it.id }}">
+              <input type="checkbox" class="uniform-cb"
+                     {% if it.collected %}checked{% endif %}
+                     onchange="toggleItem({{ it.id }}, {{ s.id }}, this)"
+                     title="{{ iname }}">
+            </td>
+            {% else %}
+            <td class="item-cell" style="color:#d1d5db;text-align:center;font-size:.7rem;">—</td>
+            {% endif %}
+            {% endfor %}
+
+            <td style="text-align:center;vertical-align:middle;padding:8px 10px;">
+              <span class="progress-pill" id="prog-{{ s.id }}">
+                {% if all_done %}
+                <i class="bi bi-check-circle-fill" style="color:#16a34a;"></i>
+                {% else %}
+                {{ s_col.n }}/{{ s_tot.n }}
+                {% endif %}
+              </span>
+            </td>
+
+            <td style="text-align:center;vertical-align:middle;padding:6px 10px;white-space:nowrap;">
+              <button type="button" class="icon-btn"
+                      onclick="openEdit({{ s.id }}, '{{ s.student_name|replace("'", "\\'") }}', '{{ s.class_name|replace("'", "\\'") }}')"
+                      title="Edit student" style="width:30px;height:30px;font-size:.8rem;color:#6366f1;">
+                <i class="bi bi-pencil-fill"></i>
+              </button>
+              <form method="post" action="{{ url_for('uniform_delete_student', uid=s.id) }}" style="display:inline;"
+                    onsubmit="return confirm('Remove {{ s.student_name }} from the uniform list?')">
+                <button type="submit" class="icon-btn" title="Delete student"
+                        style="width:30px;height:30px;font-size:.8rem;color:#ef4444;">
+                  <i class="bi bi-trash3-fill"></i>
+                </button>
+              </form>
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /class-pane -->
+{% endfor %}
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <i class="bi bi-grid-1x2 ei"></i>
+    <p style="font-weight:600;font-size:.9rem;">No accepted students yet</p>
+    <p>Accept students from <a href="{{ url_for('uniform_pending') }}">Pending Students</a> to populate this list.</p>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Add student modal ─────────────────────────────── -->
+<div class="modal fade" id="addStudentModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content" style="border-radius:14px;border:1px solid var(--border);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border);padding:16px 20px;">
+        <h6 class="modal-title" style="font-weight:700;font-size:.9rem;">Add Student to Class</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('uniform_add_student') }}">
+        <div class="modal-body" style="padding:20px;">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.75rem;font-weight:600;">Student Name <span class="text-danger">*</span></label>
+            <input type="text" name="student_name" class="form-control" required placeholder="e.g. Amina Yusuf">
+          </div>
+          <div class="mb-0">
+            <label class="form-label" style="font-size:.75rem;font-weight:600;">Class <span class="text-danger">*</span></label>
+            <select name="class_name" class="form-select" required>
+              <option value="">Select class</option>
+              {% for cls in classes_list %}
+              <option value="{{ cls }}">{{ cls }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top:1px solid var(--border);padding:12px 20px;gap:8px;">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit student modal ─────────────────────────────── -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content" style="border-radius:14px;border:1px solid var(--border);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border);padding:16px 20px;">
+        <h6 class="modal-title" style="font-weight:700;font-size:.9rem;">Edit Student</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editForm" method="post">
+        <div class="modal-body" style="padding:20px;">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.75rem;font-weight:600;">Student Name</label>
+            <input type="text" name="student_name" id="edit_name" class="form-control" required>
+          </div>
+          <div class="mb-0">
+            <label class="form-label" style="font-size:.75rem;font-weight:600;">Class</label>
+            <select name="class_name" id="edit_class" class="form-select" required>
+              <option value="">Select class</option>
+              {% for cls in classes_list %}
+              <option value="{{ cls }}">{{ cls }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top:1px solid var(--border);padding:12px 20px;gap:8px;">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+.class-tab-strip {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+.class-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1.5px solid #e4e7ed;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: .78rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all .14s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.class-tab:hover { background: #f0f2f8; border-color: #bae6fd; color: #0369a1; }
+.class-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.class-tab.active .ctab-count { background: rgba(255,255,255,.25); color: #fff; }
+.ctab-count { background: #e4e7ed; color: #64748b; font-size: .65rem; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
+.ctab-new-dot { width: 7px; height: 7px; background: #f59e0b; border-radius: 50%; flex-shrink: 0; }
+.ctab-done { color: #16a34a; font-size: .75rem; }
+.class-tab.active .ctab-done { color: #bbf7d0; }
+.pane-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:10px; }
+.pane-title { font-size:1.1rem; font-weight:800; color:#111827; letter-spacing:-.02em; }
+.pane-meta  { font-size:.75rem; color:var(--text-4); margin-top:2px; }
+</style>
+
+<script>
+function showClass(tabId) {
+  document.querySelectorAll('.class-pane').forEach(p => p.classList.add('d-none'));
+  document.querySelectorAll('.class-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.remove('d-none');
+  document.getElementById('btn-' + tabId).classList.add('active');
+}
+
+function openEdit(uid, name, className) {
+  document.getElementById('editForm').action = '/uniform/student/' + uid + '/edit';
+  document.getElementById('edit_name').value = name;
+  const sel = document.getElementById('edit_class');
+  for (let i = 0; i < sel.options.length; i++) {
+    sel.options[i].selected = sel.options[i].value.toLowerCase() === className.toLowerCase();
+  }
+  new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+function toggleItem(itemId, studentId, checkbox) {
+  checkbox.disabled = true;
+  fetch('/uniform/item/' + itemId + '/toggle', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(r => r.json())
+  .then(data => {
+    checkbox.disabled = false;
+    document.getElementById('cell-' + itemId).classList.toggle('collected', data.collected);
+    checkbox.checked = data.collected;
+    const row = document.getElementById('row-' + studentId);
+    const progEl = document.getElementById('prog-' + studentId);
+    const checks = row.querySelectorAll('.uniform-cb');
+    const done = Array.from(checks).filter(c => c.checked).length;
+    if (data.all_done) {
+      row.classList.add('all-collected-row');
+      progEl.innerHTML = '<i class="bi bi-check-circle-fill" style="color:#16a34a;"></i>';
+    } else {
+      row.classList.remove('all-collected-row');
+      progEl.textContent = done + '/' + checks.length;
+    }
+  })
+  .catch(() => { checkbox.disabled = false; checkbox.checked = !checkbox.checked; });
+}
+</script>
+
+{% endblock %}

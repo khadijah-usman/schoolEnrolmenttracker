@@ -1,0 +1,115 @@
+{% extends 'uniform_base.html' %}
+{% block title %}Manage{% endblock %}
+
+{% block content %}
+
+<div class="page-hd">
+  <div class="page-hd-left">
+    <h1>Manage Uniform Items</h1>
+    <p class="page-sub">Select a class to add or remove uniform items</p>
+  </div>
+</div>
+
+<!-- Tab strip -->
+<div class="class-tab-strip">
+  {% for cls in classes_list %}
+  <button class="class-tab {% if loop.first %}active{% endif %}"
+          onclick="showTab('mtab-{{ loop.index }}')"
+          id="mbtn-{{ loop.index }}">
+    {{ cls }}
+    <span class="ctab-count">{{ templates_by_class[cls]|length }}</span>
+  </button>
+  {% endfor %}
+</div>
+
+<!-- Class panes -->
+{% for cls in classes_list %}
+{% set items = templates_by_class[cls] %}
+<div class="class-pane {% if not loop.first %}d-none{% endif %}" id="mtab-{{ loop.index }}">
+
+  <div class="card">
+    <div class="card-header" style="justify-content:space-between;">
+      <span>
+        <i class="bi bi-bag-check-fill" style="color:var(--accent);"></i>
+        {{ cls }} — Uniform Items
+      </span>
+      <span style="font-size:.72rem;color:var(--text-4);font-weight:500;">
+        {{ items|length }} item{{ 's' if items|length != 1 }}
+      </span>
+    </div>
+    <div class="card-body p-0">
+
+      {% if items %}
+      <ul class="list-group list-group-flush">
+        {% for tpl in items %}
+        <li class="list-group-item d-flex align-items-center justify-content-between"
+            style="padding:12px 20px;font-size:.85rem;font-weight:500;">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-dot" style="color:#d1d5db;font-size:1.2rem;"></i>
+            {{ tpl.name }}
+          </div>
+          <form method="post" action="{{ url_for('uniform_delete_item', tpl_id=tpl.id) }}"
+                onsubmit="return confirm('Remove &quot;{{ tpl.name }}&quot; from {{ cls }}?')">
+            <button type="submit" class="icon-btn" title="Remove item"
+                    style="width:28px;height:28px;font-size:.78rem;color:#ef4444;">
+              <i class="bi bi-trash3-fill"></i>
+            </button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div style="padding:28px 20px;text-align:center;color:var(--text-4);font-size:.82rem;">
+        No items defined for {{ cls }} yet.
+      </div>
+      {% endif %}
+
+      <!-- Add item form -->
+      <div style="padding:14px 20px;border-top:1px solid var(--border);background:#fafbfc;">
+        <form method="post" action="{{ url_for('uniform_add_item') }}" class="d-flex gap-2">
+          <input type="hidden" name="class_name" value="{{ cls }}">
+          <input type="text" name="item_name" class="form-control form-control-sm"
+                 placeholder="New item, e.g. Blazer" required style="flex:1;">
+          <button type="submit" class="btn btn-primary btn-sm" style="white-space:nowrap;">
+            <i class="bi bi-plus-lg"></i> Add
+          </button>
+        </form>
+        <div style="font-size:.68rem;color:var(--text-4);margin-top:5px;">
+          Adding an item will add it to all current {{ cls }} students' checklists.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endfor %}
+
+<style>
+.class-tab-strip {
+  display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;
+  padding:14px 16px;background:#fff;border:1px solid var(--border);
+  border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);
+}
+.class-tab {
+  display:inline-flex;align-items:center;gap:6px;padding:7px 13px;
+  border:1.5px solid #e4e7ed;border-radius:8px;background:#f8fafc;
+  font-size:.78rem;font-weight:600;color:#475569;cursor:pointer;
+  transition:all .14s;font-family:inherit;white-space:nowrap;
+}
+.class-tab:hover{background:#f0f2f8;border-color:#bae6fd;color:#0369a1;}
+.class-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.class-tab.active .ctab-count{background:rgba(255,255,255,.25);color:#fff;}
+.ctab-count{background:#e4e7ed;color:#64748b;font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:10px;}
+</style>
+
+<script>
+function showTab(tabId) {
+  document.querySelectorAll('.class-pane').forEach(p => p.classList.add('d-none'));
+  document.querySelectorAll('.class-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.remove('d-none');
+  document.getElementById(tabId.replace('mtab-', 'mbtn-')).classList.add('active');
+}
+</script>
+
+{% endblock %}

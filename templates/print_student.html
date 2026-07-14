@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ student.child_name }} — Admissions Record</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #fff; font-family: 'Segoe UI', sans-serif; font-size: .9rem; }
+    .print-header { border-bottom: 3px solid #0d6efd; padding-bottom: 12px; margin-bottom: 20px; }
+    .section-title {
+      font-size: .7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: #6c757d; margin-bottom: 6px; margin-top: 16px;
+    }
+    dl.info-list { display: grid; grid-template-columns: 160px 1fr; gap: 2px 12px; }
+    dl.info-list dt { color: #6c757d; font-weight: 500; font-size: .83rem; }
+    dl.info-list dd { margin: 0; font-size: .88rem; }
+    .badge { border-radius: 4px; font-size: .75rem; }
+    .checklist-stage { font-size: .8rem; font-weight: 700; color: #343a40; margin-top: 12px; }
+    .checklist-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: .85rem; }
+    .check-box { width: 14px; height: 14px; border: 1.5px solid #aaa; border-radius: 3px;
+                 display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .check-box.done { background: #198754; border-color: #198754; color: #fff; font-size: .7rem; }
+    .timeline-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 6px; font-size: .83rem; }
+    .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: #0d6efd; margin-top: 4px; flex-shrink: 0; }
+    .note-row { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: .85rem; }
+    .note-time { color: #6c757d; font-size: .75rem; }
+    @media print {
+      .no-print { display: none !important; }
+      body { font-size: .82rem; }
+      .container { max-width: 100%; }
+      a { color: inherit !important; text-decoration: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="container py-4" style="max-width:800px;">
+
+  <!-- Print button -->
+  <div class="no-print mb-3 d-flex justify-content-end gap-2">
+    <button onclick="window.print()" class="btn btn-primary">
+      Print / Save as PDF
+    </button>
+    <a href="javascript:history.back()" class="btn btn-outline-secondary">Back</a>
+  </div>
+
+  <!-- Header -->
+  <div class="print-header">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h3 class="fw-bold mb-1">{{ student.child_name }}</h3>
+        <span class="badge bg-primary me-1">{{ student.stage }}</span>
+        {% if student.academic_year %}
+        <span class="badge bg-secondary">{{ student.academic_year }}</span>
+        {% endif %}
+      </div>
+      <div class="text-muted text-end small">
+        <div><strong>Admission Record</strong></div>
+        <div>Enquiry Date: {{ student.enquiry_date }}</div>
+        <div>Printed: {{ now }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left: student + parent info -->
+    <div class="col-md-6">
+      <div class="section-title">Child's Information</div>
+      <dl class="info-list">
+        <dt>Full Name</dt><dd>{{ student.child_name }}</dd>
+        <dt>Date of Birth</dt><dd>{{ student.date_of_birth or '—' }}</dd>
+        <dt>Gender</dt><dd>{{ student.gender or '—' }}</dd>
+        <dt>Class Applying For</dt><dd>{{ student.class_applying }}</dd>
+        <dt>Academic Year</dt><dd>{{ student.academic_year or '—' }}</dd>
+        <dt>Previous School</dt><dd>{{ student.previous_school or '—' }}</dd>
+        <dt>Home Address</dt><dd>{{ student.address or '—' }}</dd>
+      </dl>
+
+      <div class="section-title">Primary Parent / Guardian</div>
+      <dl class="info-list">
+        <dt>Name</dt><dd>{{ student.parent_name }}</dd>
+        <dt>Phone</dt><dd>{{ student.parent_phone or '—' }}</dd>
+        <dt>Email</dt><dd>{{ student.parent_email or '—' }}</dd>
+      </dl>
+
+      {% if student.second_parent_name %}
+      <div class="section-title">Second Parent / Guardian</div>
+      <dl class="info-list">
+        <dt>Name</dt><dd>{{ student.second_parent_name }}</dd>
+        <dt>Phone</dt><dd>{{ student.second_parent_phone or '—' }}</dd>
+      </dl>
+      {% endif %}
+
+      {% if student.notes %}
+      <div class="section-title">General Notes</div>
+      <p class="small text-secondary">{{ student.notes }}</p>
+      {% endif %}
+    </div>
+
+    <!-- Right: stage history + notes -->
+    <div class="col-md-6">
+      {% if stage_histories %}
+      <div class="section-title">Stage History</div>
+      {% for h in stage_histories %}
+      <div class="timeline-row">
+        <div class="tl-dot"></div>
+        <div>
+          <div class="fw-semibold">{{ h.stage }}</div>
+          <div class="text-muted small">{{ h.changed_at.strftime('%d %b %Y, %H:%M') }}</div>
+        </div>
+      </div>
+      {% endfor %}
+      {% endif %}
+
+      {% if activity_notes %}
+      <div class="section-title">Activity Notes</div>
+      {% for n in activity_notes %}
+      <div class="note-row">
+        <div>{{ n.note }}</div>
+        <div class="note-time">{{ n.created_at.strftime('%d %b %Y at %H:%M') }}</div>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Checklists -->
+  {% if all_checklist %}
+  <div class="section-title mt-4">Checklists by Stage</div>
+  <div class="row g-3">
+    {% for stage, items in all_checklist.items() %}
+    <div class="col-md-6">
+      <div class="checklist-stage">{{ stage }}</div>
+      {% for item in items %}
+      <div class="checklist-item">
+        <div class="check-box {% if item.completed %}done{% endif %}">
+          {% if item.completed %}✓{% endif %}
+        </div>
+        <span class="{% if item.completed %}text-decoration-line-through text-muted{% endif %}">
+          {{ item.item }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+  // Auto-print if opened via Print button from main app
+  // (relies on opener; user can also click the button)
+</script>
+</body>
+</html>
