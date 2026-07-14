@@ -56,7 +56,6 @@ Passcode:
 uniform2025
 ```
 
-> **Note:** Change the default passcodes in `app.py` before deploying to production.
 
 ## Deployment
 
